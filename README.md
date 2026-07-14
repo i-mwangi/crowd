@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is crowd a B2B middleware-as-a-service (MaaS) designed to bridge the Gap between Industrial warehouse Robotics and Hedera . By providing a unified interface for disparate robotics systems, Crowd enables transparent, traceable and tamper-resisitant logging of every robotic action in a warehouse environment, while integrating secure payment processing through an x402 layer that facilitates financial transactions before order fullfillment begins.  The system transforms physical warehouse operations into a verifiable digital audit trail with integrated payment workflows, addressing challenges in data centralization, information asymmetry, and supply chain security while enabling seamless B2B transaction processing
 
 ## Getting Started
 
