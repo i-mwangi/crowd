@@ -46,34 +46,43 @@ const useOrderProcessing = (orderId: string | null, webotsUrl?: string | null) =
     useEffect(() => {
         if (!events.length || !activeOrder) return;
 
-        events.map(async (event) => {
-            if (activeOrder.digests.includes(event.digest)) return;
-            if (event.type == 'OrderReceived') return;
+        // Sync exactly ONE new event per run, addressed by position rather
+        // than digest inclusion. This is idempotent under slow async
+        // persistence (Firestore): concurrent runs over stale state compute
+        // the same result instead of appending duplicates.
+        const sync = async () => {
+            const chain = events.filter((event) => event.type != 'OrderReceived');
+            const recorded = activeOrder.digests.filter((digest) => digest.length > 1).length;
+            const next = chain[recorded - 1]; // digests[0] is the payment tx
+            if (!next) return;
 
-            if (event.type == 'SelectedRobot') {
-                const robotType = event.robotType!;
+            const digests = [...activeOrder.digests];
+            digests[digests.length - 1] = next.digest;
+            if (digests.length < digestNames.length) digests.push('0');
+
+            if (next.type == 'SelectedRobot') {
+                const robotType = next.robotType!;
                 const robotIndex = robotType == 'Picking' ? 0 : robotType == 'Packing' ? 1 : 2;
 
-                activeOrder.robots[robotIndex].id = event.robotId!;
-                activeOrder.robots[robotIndex].digest = event.digest;
+                activeOrder.robots[robotIndex].id = next.robotId!;
+                activeOrder.robots[robotIndex].digest = next.digest;
 
-                activeOrder.approvals[robotIndex].digest = event.digest;
-                activeOrder.approvals[robotIndex].address = event.approvalAddress;
+                activeOrder.approvals[robotIndex].digest = next.digest;
+                activeOrder.approvals[robotIndex].address = next.approvalAddress;
 
                 if (robotIndex == 1)
                     await updateRobotStatus(activeOrder.robots[0].id, 'Picking', true);
                 if (robotIndex == 2)
                     await updateRobotStatus(activeOrder.robots[1].id, 'Packing', true);
 
-                await updateRobotStatus(event.robotId!, robotType, false);
+                await updateRobotStatus(next.robotId!, robotType, false);
             }
 
-            activeOrder.digests[activeOrder.digests.length - 1] = event.digest;
-            if (activeOrder.digests.length < digestNames.length) activeOrder.digests.push('0');
+            await updateOrder({ ...activeOrder, digests });
+        };
 
-            await updateOrder(activeOrder);
-        });
-    }, [events, activeOrder?.id]);
+        sync();
+    }, [events, activeOrder?.id, activeOrder?.digests.length]);
 
     const handleOrderProcessing = useCallback(
         async (processId: 0 | 1 | 2 | 3, timeout: number) => {
