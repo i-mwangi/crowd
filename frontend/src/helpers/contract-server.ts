@@ -95,8 +95,36 @@ export async function getStock(): Promise<number[]> {
     return [...state.stock];
 }
 
+// Moves one unit of the tokenized product (HTS) from the shelf treasury to
+// the buying agent — a real on-chain asset movement backing the order.
+// Best-effort: token not configured / transfer failure never blocks the demo.
+async function transferProductToken(productId: number): Promise<void> {
+    const tokenId = addresses.products[productId];
+    const agent = process.env.HEDERA_AGENT_ID;
+    if (!isLive() || !agent || !tokenId || tokenId === '0.0.0') return;
+
+    const { Client, PrivateKey, TransferTransaction } = await import('@hashgraph/sdk');
+    const client = Client.forTestnet().setOperator(
+        process.env.HEDERA_OPERATOR_ID as string,
+        PrivateKey.fromStringECDSA(process.env.HEDERA_OPERATOR_KEY as string)
+    );
+    try {
+        await (
+            await new TransferTransaction()
+                .addTokenTransfer(tokenId, process.env.HEDERA_OPERATOR_ID as string, -1)
+                .addTokenTransfer(tokenId, agent, 1)
+                .execute(client)
+        ).getReceipt(client);
+    } catch (error) {
+        console.error('[hedera] product token transfer failed (non-fatal):', error);
+    } finally {
+        client.close();
+    }
+}
+
 // Order placement: the x402 payment settled first (its transaction id is
-// digests[0]); this records the OrderReceived event on the audit trail.
+// digests[0]); this records the OrderReceived event on the audit trail and
+// moves the tokenized product to the buyer.
 export async function receiveOrder(orderId: string, productId: number): Promise<string> {
     const digest = await submitToHcs({
         type: 'OrderReceived',
@@ -105,6 +133,7 @@ export async function receiveOrder(orderId: string, productId: number): Promise<
     });
 
     if (state.stock[productId] > 0) state.stock[productId] -= 1;
+    await transferProductToken(productId);
 
     pushEvent(orderId, {
         type: 'OrderReceived',
