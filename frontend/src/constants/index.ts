@@ -48,6 +48,12 @@ export const addresses = {
         process.env.NEXT_PUBLIC_TOKEN_PURPLE ?? '0.0.0',
         process.env.NEXT_PUBLIC_TOKEN_BLUE ?? '0.0.0',
     ],
+    // NFT collections — one digital twin per robot (5 serials each)
+    robotTokens: {
+        Picking: process.env.NEXT_PUBLIC_ROBOT_PICKING ?? '0.0.0',
+        Packing: process.env.NEXT_PUBLIC_ROBOT_PACKING ?? '0.0.0',
+        Delivery: process.env.NEXT_PUBLIC_ROBOT_DELIVERY ?? '0.0.0',
+    },
     kiosks: {
         shelfs: {
             green: 'SHELF-GREEN',
