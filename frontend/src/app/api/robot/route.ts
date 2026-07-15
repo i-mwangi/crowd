@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { addresses } from '@/constants';
 
-import { moveOrder, processOrder, shipOrder } from '@/helpers/contract-server';
+import { claimPhase, moveOrder, processOrder, shipOrder } from '@/helpers/contract-server';
 
 export async function POST(request: NextRequest) {
     try {
@@ -17,6 +17,10 @@ export async function POST(request: NextRequest) {
         if (productId == undefined) throw new Error('No productId was provided');
 
         if (robotId == undefined && processId > 0) throw new Error('No robot id was provided');
+
+        // Already executed (e.g. the same order page is open in two tabs):
+        // acknowledge without re-running the phase.
+        if (!(await claimPhase(orderId, processId))) return NextResponse.json({}, { status: 200 });
 
         const color: 'green' | 'purple' | 'blue' =
             productId == 0 ? 'green' : productId == 1 ? 'purple' : 'blue';
