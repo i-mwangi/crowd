@@ -1,10 +1,12 @@
 'use client';
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { useEffect } from 'react';
 import useTwinsRobots from '@/hooks/use-twins-robots';
 
+import { addresses, hashscanEntity } from '@/constants';
 import { cn } from '@/lib/utils';
 
 export default function Twins() {
@@ -58,6 +60,13 @@ function Robot({ robot }: { robot: TwinsRobot }) {
                 >
                     {robot.isActive ? 'Active' : 'Busy'}
                 </div>
+                <Link
+                    className='text-xs text-secondary underline'
+                    href={hashscanEntity(addresses.robotTokens[robot.type])}
+                    target='_blank'
+                >
+                    View NFT on HashScan
+                </Link>
             </section>
         </figure>
     );
