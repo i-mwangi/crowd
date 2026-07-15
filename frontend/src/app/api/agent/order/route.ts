@@ -39,11 +39,18 @@ export async function POST(request: NextRequest) {
     const response = await fetchWithPayment(orderUrl, { method: 'POST' });
     const body = await response.json();
 
-    const settlement = httpClient.getPaymentSettleResponse((name) =>
-        response.headers.get(name)
-    );
-    if (settlement?.transaction && body?.payment)
-        body.payment.transactionId = settlement.transaction;
+    // The settlement transaction id normally arrives in the response body
+    // (set by the payment gate); the header is only present when the resource
+    // server echoes it, so treat it as an optional enrichment.
+    try {
+        const settlement = httpClient.getPaymentSettleResponse((name) =>
+            response.headers.get(name)
+        );
+        if (settlement?.transaction && body?.payment)
+            body.payment.transactionId = settlement.transaction;
+    } catch {
+        /* body.payment.transactionId already set by the gate */
+    }
 
     return NextResponse.json(body, { status: response.status });
 }
