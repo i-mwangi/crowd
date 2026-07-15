@@ -14,6 +14,7 @@ import { addresses } from '@/constants';
 
 interface WarehouseState {
     events: Map<string, WarehouseEvent[]>;
+    executedPhases: Map<string, Set<number>>;
     stock: number[];
     topicId?: string;
 }
@@ -21,8 +22,19 @@ interface WarehouseState {
 const globalState = globalThis as unknown as { __crowdWarehouse?: WarehouseState };
 const state: WarehouseState = (globalState.__crowdWarehouse ??= {
     events: new Map(),
+    executedPhases: new Map(),
     stock: [25, 25, 25],
 });
+
+// Idempotency guard: each fulfillment phase may execute at most once per
+// order, even if multiple clients orchestrate the same order concurrently.
+export async function claimPhase(orderId: string, processId: number): Promise<boolean> {
+    const phases = state.executedPhases.get(orderId) ?? new Set<number>();
+    if (phases.has(processId)) return false;
+    phases.add(processId);
+    state.executedPhases.set(orderId, phases);
+    return true;
+}
 
 const isLive = (): boolean =>
     Boolean(process.env.HEDERA_OPERATOR_ID && process.env.HEDERA_OPERATOR_KEY);
