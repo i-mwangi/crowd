@@ -83,47 +83,75 @@ export default class Database {
         this.isAuth = true;
     }
 
+    // If Firestore is unreachable (not created yet, or locked by security
+    // rules), disable it for the session and continue on localStorage.
+    private fallback(error: unknown) {
+        console.warn('[firebase] falling back to localStorage:', error);
+        this.db = null;
+    }
+
     async fetchRobots(): Promise<TwinsRobot[]> {
-        if (!this.db) return this.local.fetchRobots();
+        if (this.db) {
+            try {
+                const picking = await getDocs(collection(this.db, 'hedera', 'robot', 'picking'));
+                const packing = await getDocs(collection(this.db, 'hedera', 'robot', 'packing'));
+                const delivery = await getDocs(collection(this.db, 'hedera', 'robot', 'delivery'));
 
-        const picking = await getDocs(collection(this.db, 'hedera', 'robot', 'picking'));
-        const packing = await getDocs(collection(this.db, 'hedera', 'robot', 'packing'));
-        const delivery = await getDocs(collection(this.db, 'hedera', 'robot', 'delivery'));
+                const robots: TwinsRobot[] = [];
+                picking.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Picking' }));
+                packing.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Packing' }));
+                delivery.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Delivery' }));
 
-        const robots: TwinsRobot[] = [];
-        picking.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Picking' }));
-        packing.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Packing' }));
-        delivery.docs.map((robot) => robots.push({ ...(robot.data() as TwinsRobot), type: 'Delivery' }));
-
-        return robots;
+                if (robots.length) return robots;
+            } catch (error) {
+                this.fallback(error);
+            }
+        }
+        return this.local.fetchRobots();
     }
 
     async updateRobotStatus(id: number, type: RobotType, isActive: boolean) {
-        if (!this.db) return this.local.updateRobotStatus(id, type, isActive);
-
-        await this.authenticate();
-        await updateDoc(doc(this.db, 'hedera', 'robot', type.toLowerCase(), id.toString()), {
-            id,
-            isActive,
-        });
+        if (this.db) {
+            try {
+                await this.authenticate();
+                await setDoc(doc(this.db, 'hedera', 'robot', type.toLowerCase(), id.toString()), {
+                    id,
+                    isActive,
+                });
+                return;
+            } catch (error) {
+                this.fallback(error);
+            }
+        }
+        return this.local.updateRobotStatus(id, type, isActive);
     }
 
     async fetchOrders(wallet: string): Promise<Order[]> {
-        if (!this.db) return this.local.fetchOrders(wallet);
-
-        const snapshot = await getDocs(collection(this.db, 'hedera', 'users', wallet));
-        if (snapshot.empty) return [];
-        return snapshot.docs.map((order) => order.data()) as Order[];
+        if (this.db) {
+            try {
+                const snapshot = await getDocs(collection(this.db, 'hedera', 'users', wallet));
+                return snapshot.docs.map((order) => order.data()) as Order[];
+            } catch (error) {
+                this.fallback(error);
+            }
+        }
+        return this.local.fetchOrders(wallet);
     }
 
     async addOrUpdateOrder(wallet: string, order: Order) {
-        if (!this.db) return this.local.addOrUpdateOrder(wallet, order);
+        if (this.db) {
+            try {
+                await this.authenticate();
+                const ref = doc(this.db, 'hedera', 'users', wallet, order.id);
 
-        await this.authenticate();
-        const ref = doc(this.db, 'hedera', 'users', wallet, order.id);
-
-        const snapshot = await getDoc(ref);
-        if (snapshot.exists()) await updateDoc(ref, { ...order });
-        else await setDoc(ref, { ...order });
+                const snapshot = await getDoc(ref);
+                if (snapshot.exists()) await updateDoc(ref, { ...order });
+                else await setDoc(ref, { ...order });
+                return;
+            } catch (error) {
+                this.fallback(error);
+            }
+        }
+        return this.local.addOrUpdateOrder(wallet, order);
     }
 }
