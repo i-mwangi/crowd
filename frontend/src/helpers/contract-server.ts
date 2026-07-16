@@ -39,6 +39,55 @@ export async function claimPhase(orderId: string, processId: number): Promise<bo
 const isLive = (): boolean =>
     Boolean(process.env.HEDERA_OPERATOR_ID && process.env.HEDERA_OPERATOR_KEY);
 
+// The WarehouseRegistry contract enforces phase ordering and draws robot
+// assignments from Hedera's PRNG. When configured it becomes the source of
+// truth for those decisions; the HCS trail still records them for the UI.
+const registryId = (): string => process.env.NEXT_PUBLIC_REGISTRY_CONTRACT ?? '';
+const registryEnabled = (): boolean => isLive() && Boolean(registryId());
+
+// Executes a registry function. Best-effort: a failure never blocks the demo,
+// it falls back to hub-side behavior. Returns the tx id and (optionally) the
+// contract's return value.
+async function callRegistry(
+    fn: string,
+    build: (params: import('@hashgraph/sdk').ContractFunctionParameters) => import('@hashgraph/sdk').ContractFunctionParameters,
+    wantsReturn: boolean
+): Promise<{ txId: string; value?: number } | null> {
+    if (!registryEnabled()) return null;
+
+    const { Client, PrivateKey, ContractExecuteTransaction, ContractFunctionParameters } =
+        await import('@hashgraph/sdk');
+
+    const client = Client.forTestnet().setOperator(
+        process.env.HEDERA_OPERATOR_ID as string,
+        PrivateKey.fromStringECDSA(process.env.HEDERA_OPERATOR_KEY as string)
+    );
+
+    try {
+        const resp = await new ContractExecuteTransaction()
+            .setContractId(registryId())
+            .setGas(400_000)
+            .setFunction(fn, build(new ContractFunctionParameters()))
+            .execute(client);
+
+        if (!wantsReturn) {
+            await resp.getReceipt(client);
+            return { txId: resp.transactionId.toString() };
+        }
+
+        const record = await resp.getRecord(client);
+        return {
+            txId: resp.transactionId.toString(),
+            value: record.contractFunctionResult!.getUint32(0),
+        };
+    } catch (error) {
+        console.error(`[hedera] registry ${fn} failed (non-fatal):`, error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
+
 const mockDigest = (): string =>
     `mock-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -133,6 +182,10 @@ export async function receiveOrder(orderId: string, productId: number): Promise<
     });
 
     if (state.stock[productId] > 0) state.stock[productId] -= 1;
+
+    // Register the order on-chain so the contract can enforce phase ordering
+    // for the robot steps that follow.
+    await callRegistry('receiveOrder', (p) => p.addString(orderId).addUint8(productId), false);
     await transferProductToken(productId);
 
     pushEvent(orderId, {
@@ -145,21 +198,32 @@ export async function receiveOrder(orderId: string, productId: number): Promise<
     return digest;
 }
 
-// pick_order / pack_order / deliver_order — selects a robot from the fleet
-// (load balancing) and commits the assignment to the audit trail.
+// pick_order / pack_order / deliver_order — the registry contract enforces
+// that this phase follows the previous one and draws the robot from on-chain
+// PRNG; the selection is then committed to the readable audit trail. Falls
+// back to hub-side random selection when the contract isn't configured.
 export async function processOrder(
     action: 'pick' | 'pack' | 'deliver',
     orderId: string
 ): Promise<string> {
     const robotType: RobotType =
         action == 'pick' ? 'Picking' : action == 'pack' ? 'Packing' : 'Delivery';
-    const robotId = Math.floor(Math.random() * 5);
+    const robotTypeEnum = action == 'pick' ? 0 : action == 'pack' ? 1 : 2;
+
+    const enforced = await callRegistry(
+        'selectRobot',
+        (p) => p.addString(orderId).addUint8(robotTypeEnum),
+        true
+    );
+    const robotId = enforced?.value ?? Math.floor(Math.random() * 5);
 
     const digest = await submitToHcs({
         type: 'SelectedRobot',
         order_id: orderId,
         robot_type: robotType,
         robot_id: robotId,
+        selected_by: enforced ? `contract ${registryId()} (PRNG)` : 'hub',
+        contract_tx: enforced?.txId ?? null,
         approved_by: process.env.HEDERA_OPERATOR_ID ?? '0.0.OPERATOR',
     });
 
@@ -202,6 +266,9 @@ export async function moveOrder(
 }
 
 export async function shipOrder(orderId: string, productId: number): Promise<string> {
+    // Contract requires the order to have reached the Delivery phase.
+    await callRegistry('shipOrder', (p) => p.addString(orderId), false);
+
     const digest = await submitToHcs({
         type: 'ShipOrder',
         order_id: orderId,
