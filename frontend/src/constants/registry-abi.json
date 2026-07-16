@@ -1,0 +1,219 @@
+[
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "enum WarehouseRegistry.Phase",
+        "name": "current",
+        "type": "uint8"
+      },
+      {
+        "internalType": "enum WarehouseRegistry.Phase",
+        "name": "requested",
+        "type": "uint8"
+      }
+    ],
+    "name": "InvalidTransition",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotOperator",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      }
+    ],
+    "name": "OrderAlreadyExists",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "RandomnessUnavailable",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      }
+    ],
+    "name": "UnknownOrder",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "productId",
+        "type": "uint8"
+      }
+    ],
+    "name": "OrderReceived",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      }
+    ],
+    "name": "OrderShipped",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum WarehouseRegistry.RobotType",
+        "name": "robotType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "robotId",
+        "type": "uint8"
+      }
+    ],
+    "name": "RobotSelected",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      }
+    ],
+    "name": "getOrder",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "productId",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "phase",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "pickingRobot",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "packingRobot",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "deliveryRobot",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "operator",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      },
+      {
+        "internalType": "uint8",
+        "name": "productId",
+        "type": "uint8"
+      }
+    ],
+    "name": "receiveOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      },
+      {
+        "internalType": "enum WarehouseRegistry.RobotType",
+        "name": "robotType",
+        "type": "uint8"
+      }
+    ],
+    "name": "selectRobot",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "robotId",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "orderId",
+        "type": "string"
+      }
+    ],
+    "name": "shipOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
