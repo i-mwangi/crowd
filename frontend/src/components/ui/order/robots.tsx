@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CopyButton } from '@/components/ui/copy-button';
 
-import { addresses, hashscanTx } from '@/constants';
+import { addresses, hashscanContract, hashscanTx } from '@/constants';
 
 import { sliceDigest } from '@/utils/formatter';
 import { cn } from '@/lib/utils';
@@ -19,10 +19,15 @@ export default function Robots({ order, className }: Props) {
         <section className={cn('flex flex-col gap-y-4', className)}>
             <section className='flex items-center gap-x-2.5 col-span-3'>
                 <h4>Load Assignment</h4>
-                <figure className='order-note'>
+                <Link
+                    className='order-note hover:underline'
+                    href={hashscanContract(addresses.registry)}
+                    target='_blank'
+                    title={`Drawn by the registry contract ${addresses.registry} using Hedera's on-chain PRNG`}
+                >
                     <Image src={'/images/icons/power.svg'} alt='power' height={8} width={8} />
-                    <h6>Hub Load Balancing on Hedera</h6>
-                </figure>
+                    <h6>On-Chain PRNG · Registry Contract</h6>
+                </Link>
                 <figure className='order-note'>
                     <Image
                         src={'/images/icons/important.svg'}
