@@ -123,6 +123,52 @@
     .spinner {
         @apply w-4 h-4 border-2 border-foreground border-t-transparent animate-spin rounded-full;
     }
+
+    /* Robot Simulator scene */
+    .crowd-haul {
+        animation: crowd-haul 5s ease-in-out infinite;
+    }
+
+    .crowd-bob {
+        animation: crowd-bob 0.6s ease-in-out infinite;
+    }
+
+    .crowd-floor {
+        animation: crowd-floor 1s linear infinite;
+    }
+}
+
+@keyframes crowd-haul {
+    0%,
+    12% {
+        transform: translateX(0);
+    }
+    76%,
+    100% {
+        transform: translateX(292px);
+    }
+}
+
+@keyframes crowd-bob {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-1.5px);
+    }
+}
+
+@keyframes crowd-floor {
+    from {
+        opacity: 0.15;
+    }
+    50% {
+        opacity: 0.6;
+    }
+    to {
+        opacity: 0.15;
+    }
 }
 
 @layer base {
