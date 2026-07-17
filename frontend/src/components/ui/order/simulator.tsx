@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import WarehousePopup from './warehouse-popup';
+import SimulationScene from './simulation-scene';
 
 import { useEffect, useState } from 'react';
 
@@ -16,6 +17,9 @@ interface Props {
 export default function Simulator({ method, order, className }: Props) {
     const [design, setDesign] = useState(false);
     const [status, setStatus] = useState<SimulatorStatus>('processing');
+    // Recorded Webots footage is optional; fall back to the live scene when a
+    // clip for the current phase isn't published.
+    const [footageMissing, setFootageMissing] = useState(false);
 
     useEffect(() => {
         switch (order?.digests.length) {
@@ -36,6 +40,8 @@ export default function Simulator({ method, order, className }: Props) {
                 break;
         }
     }, [order.digests.length]);
+
+    useEffect(() => setFootageMissing(false), [status]);
 
     return (
         <>
@@ -75,16 +81,20 @@ export default function Simulator({ method, order, className }: Props) {
                             <h4>Waiting for next command</h4>
                             <div className='spinner w-8 h-8' />
                         </>
+                    ) : footageMissing ? (
+                        <SimulationScene status={status} productId={order.productId} />
                     ) : (
-                        <video className='h-full' autoPlay disablePictureInPicture>
-                            <source
-                                src={`/videos/${status}${
-                                    status != 'delivery' ? `-${order.productId + 1}` : ''
-                                }.mp4`}
-                                type='video/mp4'
-                            />
-                            Your browser does not support the video tag.
-                        </video>
+                        <video
+                            className='h-full'
+                            src={`/videos/${status}${
+                                status != 'delivery' ? `-${order.productId + 1}` : ''
+                            }.mp4`}
+                            autoPlay
+                            muted
+                            loop
+                            disablePictureInPicture
+                            onError={() => setFootageMissing(true)}
+                        />
                     )}
                 </div>
             </section>
