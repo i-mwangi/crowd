@@ -43,6 +43,9 @@ export const digestNames = [
 export const addresses = {
     owner: process.env.NEXT_PUBLIC_OWNER_ACCOUNT ?? '0.0.0',
     hcsTopic: process.env.NEXT_PUBLIC_HCS_TOPIC ?? '',
+    // Enforcement layer: rejects out-of-order phases, draws robot assignments
+    // from network randomness.
+    registry: process.env.NEXT_PUBLIC_REGISTRY_CONTRACT ?? '',
     products: [
         process.env.NEXT_PUBLIC_TOKEN_GREEN ?? '0.0.0',
         process.env.NEXT_PUBLIC_TOKEN_PURPLE ?? '0.0.0',
@@ -81,3 +84,6 @@ export const hashscanTx = (digest: string): string =>
 
 export const hashscanEntity = (id: string): string =>
     id === '0.0.0' || !id ? '#' : `${explorerUrl}/token/${id}`;
+
+export const hashscanContract = (id: string): string =>
+    !id ? '#' : `${explorerUrl}/contract/${id}`;
