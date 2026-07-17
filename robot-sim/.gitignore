@@ -1,0 +1,5 @@
+# Runtime handoff state between the Flask bridge and Webots controllers.
+controllers/color.txt
+controllers/order.txt
+controllers/robot.txt
+controllers/robot_*/state.txt
