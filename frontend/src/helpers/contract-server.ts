@@ -11,6 +11,7 @@
 // so the full demo runs credential-free.
 
 import { addresses } from '@/constants';
+import { purchaseTask } from '@/helpers/fleet';
 
 interface WarehouseState {
     events: Map<string, WarehouseEvent[]>;
@@ -91,6 +92,60 @@ async function callRegistry(
 const mockDigest = (): string =>
     `mock-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+// Hedera caps transaction memos at 100 BYTES, not characters. Overflowing it
+// fails the submit outright, so truncate on the encoded length — the separator
+// used below is multi-byte.
+const MEMO_LIMIT = 100;
+
+const clampMemo = (memo: string): string => {
+    const encoder = new TextEncoder();
+    if (encoder.encode(memo).length <= MEMO_LIMIT) return memo;
+    let out = '';
+    for (const char of memo) {
+        if (encoder.encode(out + char).length > MEMO_LIMIT) break;
+        out += char;
+    }
+    return out;
+};
+
+/**
+ * A human-readable label for the transaction memo. HashScan shows the memo on
+ * a transaction's Summary tab, right under the protocol TYPE — which is always
+ * "SUBMIT MESSAGE" and can't be changed. This is what makes an entry read as
+ * "Parcel Delivery · Robot #4" at a glance instead of a generic HCS submit.
+ */
+function memoFor(payload: Record<string, unknown>): string {
+    const order = payload.order_id ? ` · order ${payload.order_id}` : '';
+    const phase: Record<string, string> = {
+        Picking: 'Product Pickup',
+        Packing: 'Order Packing',
+        Delivery: 'Parcel Delivery',
+    };
+
+    let label: string;
+    switch (payload.type) {
+        case 'OrderReceived':
+            label = 'Warehouse received order';
+            break;
+        case 'SelectedRobot':
+            label = `${phase[String(payload.robot_type)] ?? 'Robot assigned'} · Robot #${payload.robot_id}`;
+            break;
+        case 'TaskPurchased':
+            label = `${phase[String(payload.robot_type)] ?? 'Robot task'} paid · $${payload.fee_usdc} USDC · ${payload.weight_kg}kg`;
+            break;
+        case 'MoveProduct':
+            label = `Moved ${payload.from} to ${payload.to}`;
+            break;
+        case 'ShipOrder':
+            label = 'Parcel shipped';
+            break;
+        default:
+            label = String(payload.type ?? 'Warehouse event');
+    }
+
+    return clampMemo(`Crowd · ${label}${order}`);
+}
+
 async function submitToHcs(payload: Record<string, unknown>): Promise<string> {
     if (!isLive()) return mockDigest();
 
@@ -118,6 +173,7 @@ async function submitToHcs(payload: Record<string, unknown>): Promise<string> {
         const response = await new TopicMessageSubmitTransaction()
             .setTopicId(topicId)
             .setMessage(JSON.stringify(payload))
+            .setTransactionMemo(memoFor(payload))
             .execute(client);
         await response.getReceipt(client);
 
@@ -204,7 +260,8 @@ export async function receiveOrder(orderId: string, productId: number): Promise<
 // back to hub-side random selection when the contract isn't configured.
 export async function processOrder(
     action: 'pick' | 'pack' | 'deliver',
-    orderId: string
+    orderId: string,
+    productId: number
 ): Promise<string> {
     const robotType: RobotType =
         action == 'pick' ? 'Picking' : action == 'pack' ? 'Packing' : 'Delivery';
@@ -236,6 +293,22 @@ export async function processOrder(
         approvalAddress: process.env.HEDERA_OPERATOR_ID ?? '0.0.OPERATOR',
         timestamp: Date.now(),
     });
+
+    // Buy the robot's labour before it moves. The fleet operator quotes a fee
+    // from the package weight over x402; once that payment settles the robot is
+    // unlocked for this one task and picks the job up off the chain.
+    const unlock = await purchaseTask(orderId, robotType, robotId, productId);
+    if (unlock) {
+        await submitToHcs({
+            type: 'TaskPurchased',
+            order_id: orderId,
+            robot_type: robotType,
+            robot_id: robotId,
+            weight_kg: unlock.weightKg,
+            fee_usdc: unlock.feeUsdc,
+            payment_tx: unlock.paymentTx,
+        });
+    }
 
     return digest;
 }
