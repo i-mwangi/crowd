@@ -123,7 +123,7 @@ Requires Node 20+, pnpm, and a funded ECDSA Hedera testnet account
 
 ```bash
 cd frontend
-pnpm install --ignore-workspace     # the repo root is also a Next app
+pnpm install
 cp .env.example .env                # then fill in the values below
 pnpm dev                            # http://localhost:3000
 ```
