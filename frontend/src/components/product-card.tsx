@@ -37,7 +37,7 @@ export default function ProductCard({ product, setOrderProduct }: Props) {
                         <h5>Stock</h5>
                     </div>
                     <div className='flex flex-col items-center'>
-                        <h3 className='text-xl font-medium'>{product.priceHbar} ℏ</h3>
+                        <h3 className='text-xl font-medium'>${product.priceUsdc}</h3>
                         <h5>via x402</h5>
                     </div>
                 </section>
