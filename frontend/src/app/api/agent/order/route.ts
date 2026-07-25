@@ -24,15 +24,21 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(await response.json(), { status: response.status });
     }
 
-    const { createClientHederaSigner, PrivateKey } = await import('@x402/hedera');
     const { ExactHederaScheme } = await import('@x402/hedera/exact/client');
+    const { createMemoClientSigner } = await import('@/lib/memo-x402-signer');
 
-    const signer = createClientHederaSigner(
+    // Memo so the goods payment is identifiable on HashScan rather than
+    // appearing as an unlabelled transfer.
+    const signer = createMemoClientSigner(
         process.env.HEDERA_AGENT_ID as string,
-        PrivateKey.fromStringECDSA(process.env.HEDERA_AGENT_KEY as string),
-        { network: process.env.HEDERA_NETWORK ?? 'hedera:testnet' }
+        process.env.HEDERA_AGENT_KEY as string,
+        process.env.HEDERA_NETWORK ?? 'hedera:testnet',
+        `Crowd · Order payment · product ${productId} · order ${orderId}`
     );
-    const client = new x402Client().register('hedera:*', new ExactHederaScheme(signer));
+    const client = new x402Client().register(
+        'hedera:*',
+        new ExactHederaScheme(signer as never)
+    );
     const fetchWithPayment = wrapFetchWithPayment(fetch, client);
     const httpClient = new x402HTTPClient(client);
 
