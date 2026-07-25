@@ -10,7 +10,7 @@ import { useWallet } from '@/context/WalletProvider';
 export default function Connection() {
     const router = useRouter();
 
-    const { isConnected, connect } = useWallet();
+    const { isConnected, connect, connecting, error } = useWallet();
 
     useEffect(() => {
         if (isConnected) router.push('/home/store');
@@ -35,9 +35,11 @@ export default function Connection() {
             <RainbowButton
                 className='mt-5 px-14 py-6 primary-button text-2xl font-normal'
                 onClick={() => connect()}
+                disabled={connecting}
             >
-                <h3>Connect Hedera Wallet</h3>
+                <h3>{connecting ? 'Connecting…' : 'Connect Hedera Wallet'}</h3>
             </RainbowButton>
+            {error && <p className='text-sm text-red'>{error}</p>}
         </main>
     );
 }
