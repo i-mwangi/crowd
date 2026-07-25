@@ -13,7 +13,7 @@ import {
 import type { Network } from '@x402/core/types';
 import { ExactHederaScheme } from '@x402/hedera/exact/server';
 
-import { productPricesHbar } from '@/constants';
+import { productPricesUsdc, USDC_TOKEN, usdcToAtomic } from '@/constants';
 
 const HBAR_DECIMALS = 8;
 export const hbarToTinybar = (hbar: number): string =>
@@ -68,10 +68,11 @@ const buildServer = async (): Promise<x402HTTPResourceServer> => {
                 maxTimeoutSeconds: 180,
                 price: (ctx: HTTPRequestContext) => {
                     const productId = Number(ctx.adapter.getQueryParam?.('product'));
-                    const price = productPricesHbar[productId];
+                    const price = productPricesUsdc[productId];
                     if (price == undefined)
                         throw new Error(`Unknown product for pricing: ${productId}`);
-                    return { asset: '0.0.0', amount: hbarToTinybar(price) };
+                    // Settled in USDC: a stablecoin price, not a floating one.
+                    return { asset: USDC_TOKEN, amount: usdcToAtomic(price) };
                 },
             },
         },
