@@ -111,7 +111,7 @@ function Order() {
                                             width={24}
                                         />
                                         <h4 className='underline !text-foreground'>
-                                            {activeOrder.payment.amountHbar} ℏ settled on Hedera
+                                            ${activeOrder.payment.amountUsdc} USDC settled on Hedera
                                         </h4>
                                         <Image
                                             src={`/images/hedera.svg`}
