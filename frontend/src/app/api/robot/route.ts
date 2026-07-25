@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
         switch (processId) {
             case 0:
-                await processOrder('pick', orderId);
+                await processOrder('pick', orderId, productId);
                 break;
             case 1:
                 await moveOrder(
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
                     productId,
                     orderId
                 );
-                await processOrder('pack', orderId);
+                await processOrder('pack', orderId, productId);
                 break;
             case 2:
                 await moveOrder(
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
                     productId,
                     orderId
                 );
-                await processOrder('deliver', orderId);
+                await processOrder('deliver', orderId, productId);
                 break;
             case 3:
                 await moveOrder(
