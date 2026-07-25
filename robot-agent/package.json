@@ -1,0 +1,16 @@
+{
+  "name": "crowd-robot-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The rented robot fleet — subscribes to the on-chain task bus and signs its own completions",
+  "scripts": {
+    "start": "node index.mjs",
+    "server": "node server.mjs"
+  },
+  "dependencies": {
+    "@hashgraph/sdk": "^2.62.0",
+    "@x402/core": "2.16.0",
+    "@x402/hedera": "2.16.0"
+  }
+}
