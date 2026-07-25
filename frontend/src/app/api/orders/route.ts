@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-import { productPricesHbar } from '@/constants';
+import { productPricesUsdc } from '@/constants';
 import { receiveOrder } from '@/helpers/contract-server';
 import { gateOrderPayment } from '@/helpers/x402';
 
@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const orderId = url.searchParams.get('order') ?? '';
 
     if (!orderId) return NextResponse.json({ error: 'No order id was provided' }, { status: 400 });
-    if (productPricesHbar[productId] == undefined)
+    if (productPricesUsdc[productId] == undefined)
         return NextResponse.json({ error: `Unknown product: ${productId}` }, { status: 404 });
 
     const gate = await gateOrderPayment(request);
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         {
             digest,
             payment: {
-                amountHbar: productPricesHbar[productId],
+                amountUsdc: productPricesUsdc[productId],
                 transactionId: gate.payment.transactionId ?? '',
                 mode: gate.payment.mode,
             },
