@@ -101,6 +101,12 @@ const PHASE_OF: Record<string, string> = {
     Delivery: 'delivery',
 };
 
+const PHASE_LABEL: Record<string, string> = {
+    Picking: 'Product Pickup',
+    Packing: 'Order Packing',
+    Delivery: 'Parcel Delivery',
+};
+
 /**
  * Buys one robot task from the fleet operator over x402.
  *
@@ -128,19 +134,26 @@ export async function purchaseTask(
         `&robot=${robotId}&product=${productId}&weight=${weightKg}`;
 
     try {
-        const { createClientHederaSigner, PrivateKey } = await import('@x402/hedera');
         const { ExactHederaScheme } = await import('@x402/hedera/exact/client');
         const { x402Client } = await import('@x402/core/client');
         const { wrapFetchWithPayment } = await import('@x402/fetch');
+        const { createMemoClientSigner } = await import('@/lib/memo-x402-signer');
 
         // The warehouse pays as itself — the same account that receives
-        // customer payments now spends on robot labour.
-        const signer = createClientHederaSigner(
+        // customer payments now spends on robot labour. The memo makes the
+        // settlement self-describing on HashScan, where a bare transfer would
+        // otherwise carry no indication of what it bought.
+        const label = PHASE_LABEL[robotType] ?? robotType;
+        const signer = createMemoClientSigner(
             process.env.HEDERA_OPERATOR_ID as string,
-            PrivateKey.fromStringECDSA(process.env.HEDERA_OPERATOR_KEY as string),
-            { network: process.env.HEDERA_NETWORK ?? 'hedera:testnet' }
+            process.env.HEDERA_OPERATOR_KEY as string,
+            process.env.HEDERA_NETWORK ?? 'hedera:testnet',
+            `Crowd · ${label} robot #${robotId} · ${weightKg}kg · order ${orderId}`
         );
-        const client = new x402Client().register('hedera:*', new ExactHederaScheme(signer));
+        const client = new x402Client().register(
+            'hedera:*',
+            new ExactHederaScheme(signer as never)
+        );
         const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
         const response = await fetchWithPayment(url, { method: 'POST' });
