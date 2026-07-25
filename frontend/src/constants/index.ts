@@ -75,7 +75,27 @@ export const addresses = {
 };
 
 // x402 order pricing (HBAR per product id)
-export const productPricesHbar = [0.5, 0.75, 1];
+// Settlement asset. Payments are made in USDC — a stablecoin, so prices are
+// quoted in dollars rather than a floating token. USDC on Hedera has 6
+// decimals, which is what makes sub-cent pricing expressible.
+export const USDC_TOKEN = process.env.NEXT_PUBLIC_USDC_TOKEN ?? '0.0.5449';
+export const USDC_DECIMALS = 6;
+
+export const usdcToAtomic = (usd: number): string =>
+    BigInt(Math.round(usd * 10 ** USDC_DECIMALS)).toString();
+
+/** Catalogue price per product, in USDC. */
+export const productPricesUsdc = [0.01, 0.015, 0.02];
+
+// Shipping weight per product. Robot labour is priced from this: lifting 35 kg
+// is not the same job as lifting 2 kg, so the fleet charges accordingly.
+export const productWeightsKg = [2, 12, 35];
+
+export type TaskPhase = 'picking' | 'packing' | 'delivery';
+
+// NOTE: the price of robot labour is NOT set here. The fleet operator owns its
+// own tariff and quotes it in the 402 challenge; the warehouse discovers the
+// fee at request time rather than hardcoding another party's prices.
 
 export const hashscanTx = (digest: string): string =>
     digest.startsWith('mock-')
