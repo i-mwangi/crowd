@@ -8,6 +8,7 @@ import Robots from '@/components/ui/order/robots';
 import Simulator from '@/components/ui/order/simulator';
 import Approval from '@/components/ui/order/approval';
 import Logs from '@/components/ui/order/logs';
+import FleetPayments from '@/components/ui/order/fleet-payments';
 
 import { useSearchParams } from 'next/navigation';
 import useOrderProcessing from '@/hooks/use-order-processing';
@@ -159,6 +160,7 @@ function Order() {
                             className='col-span-3'
                         />
                     </section>
+                    <FleetPayments orderId={activeOrder.id} className='w-full' />
                     <Approval approvals={activeOrder.approvals} className='w-full' />
                 </div>
             </main>
