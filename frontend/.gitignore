@@ -9,6 +9,12 @@ out/
 .env
 .env*.local
 
+# robot fleet keypairs (one private key per digital twin)
+fleet.json
+
+# demo customer wallet (private key for HashPack import)
+customer-wallet.json
+
 # misc
 *.tsbuildinfo
 next-env.d.ts
