@@ -11,6 +11,7 @@ import useOrders from '@/hooks/use-orders';
 
 import { createOrder } from '@/helpers/order';
 import { placeOrder } from '@/helpers/contract-client';
+import { USDC_TOKEN } from '@/constants';
 import { cn } from '@/lib/utils';
 import { generateOrderId } from '@/utils/generator';
 
@@ -26,13 +27,15 @@ export default function OrderForm({ orderedProduct, setOrderProduct }: Props) {
     const [activeOrderId, setActiveOrderId] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [countdown, setCountdown] = useState(15);
+    const [paymentError, setPaymentError] = useState<string>();
 
     const name = useRef('');
     const phone = useRef('');
     const deliveryAddress = useRef('');
 
     useEffect(() => {
-        if (isProcessing) return;
+        // Keep the form open while a payment error is being read.
+        if (isProcessing || paymentError) return;
         if (countdown <= 0) setOrderProduct(undefined);
         if (!orderedProduct) setCountdown(15);
         else setTimeout(() => setCountdown(countdown - 1), 1_000);
@@ -70,12 +73,20 @@ export default function OrderForm({ orderedProduct, setOrderProduct }: Props) {
             setActiveOrderId(order.id);
             await addOrder(order);
         } catch (error) {
-            handleModalClose();
+            // Surface the failure instead of silently closing: a wallet payment
+            // can be rejected, time out, or fail the facilitator's balance and
+            // token-association checks, and the buyer needs to know which.
+            console.error('[order] payment failed:', error);
+            setPaymentError(
+                error instanceof Error ? error.message : 'Payment failed — order not placed'
+            );
+            setIsProcessing(false);
         }
     }, [orderedProduct, address]);
 
     const handleModalClose = useCallback(() => {
         setIsProcessing(false);
+        setPaymentError(undefined);
         setOrderProduct(undefined);
         name.current = '';
         phone.current = '';
@@ -125,9 +136,19 @@ export default function OrderForm({ orderedProduct, setOrderProduct }: Props) {
                             {isProcessing ? (
                                 <div className='w-6 h-6 border-3 border-background border-l-transparent rounded-full animate-spin'></div>
                             ) : (
-                                `Pay ${orderedProduct?.priceHbar ?? ''} ℏ via x402 & Place Order`
+                                `Pay $${orderedProduct?.priceUsdc ?? ''} USDC via x402 & Place Order`
                             )}
                         </button>
+                        {paymentError && (
+                            <p className='text-xs text-red'>
+                                {paymentError}
+                                <br />
+                                <span className='text-secondary'>
+                                    Your wallet needs USDC ({USDC_TOKEN}) associated and funded on
+                                    testnet to pay for an order.
+                                </span>
+                            </p>
+                        )}
                     </div>
                 </section>
                 <Image
