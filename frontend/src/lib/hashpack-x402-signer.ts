@@ -11,6 +11,8 @@
 
 import type { DAppSigner } from '@hashgraph/hedera-wallet-connect';
 
+import { clampMemo } from '@/lib/memo-x402-signer';
+
 // Matches @x402/hedera's ClientHederaSigner shape.
 export interface ClientHederaSigner {
     readonly accountId: string;
@@ -29,7 +31,9 @@ const HBAR_ASSET = '0.0.0';
 
 export function createHashpackX402Signer(
     accountId: string,
-    walletSigner: DAppSigner
+    walletSigner: DAppSigner,
+    /** Shown in the wallet's approval prompt and recorded on-chain. */
+    memo = 'Crowd · Order payment'
 ): ClientHederaSigner {
     return {
         accountId,
@@ -73,6 +77,7 @@ export function createHashpackX402Signer(
             // The facilitator is the fee payer; the transfer is signed by the
             // customer's wallet only (partial signature).
             tx.setTransactionId(TransactionId.generate(AccountId.fromString(feePayer)));
+            tx.setTransactionMemo(clampMemo(memo));
 
             // The wallet freezes and signs; the user approves in-wallet.
             const signed = await walletSigner.signTransaction(tx as never);
