@@ -4,7 +4,8 @@ declare global {
     interface Product {
         id: number;
         stock: number;
-        priceHbar: number;
+        priceUsdc: number;
+        weightKg: number;
     }
 
     type RobotType = 'Picking' | 'Packing' | 'Delivery';
@@ -46,7 +47,7 @@ declare global {
         robots: RobotReceipt[];
 
         payment?: {
-            amountHbar: number;
+            amountUsdc: number;
             transactionId: string;
             mode: 'live' | 'mock';
         };
