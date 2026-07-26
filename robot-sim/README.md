@@ -73,10 +73,23 @@ until a robot reports `ready`.
 In online mode the DApp fakes step 2–4 with a timer. In local mode real robot
 work replaces the timer; the on-chain result is identical.
 
-## Known limitations (inherited from the original)
+## Installing Webots
 
-- **One order per run.** Each controller `break`s out of its loop after a
-  single task, so restart the simulation between orders. Fixing this means
-  reworking the hardcoded movement sequences, which assume a fixed start pose.
-- **`stls/arm/link 5 part 3.STL` and `wheel.STL` are unreferenced** by the
-  world file; kept for completeness.
+The world is pinned to **Webots R2023b** (`#VRML_SIM R2023b` header, and the
+`EXTERNPROTO` entries point at that release). Download it from
+[cyberbotics.com](https://cyberbotics.com/) — a newer release will usually
+open the world but may warn about proto versions.
+
+Asset references have been validated:
+
+- 15 local meshes under `stls/` — all resolve from `worlds/factory.wbt`
+- the Robotiq 2F-140 gripper meshes and background protos are fetched from
+  GitHub on first open, so the **first launch needs internet**
+
+## Known limitations
+
+- **Drift over repeated runs.** Movement is dead-reckoned from wheel encoders
+  with hardcoded distances, so position error accumulates across many orders.
+  Restart the simulation if the robots stop lining up with the shelves.
+- **`stls/arm/link 5 part 3.STL` and `wheel.STL` were removed** — the world
+  file references neither.
