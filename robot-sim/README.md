@@ -73,6 +73,30 @@ until a robot reports `ready`.
 In online mode the DApp fakes step 2–4 with a timer. In local mode real robot
 work replaces the timer; the on-chain result is identical.
 
+## Launching
+
+Start the simulation with the bundled launcher rather than the desktop
+shortcut:
+
+```powershell
+cd robot-sim
+.\launch-webots.ps1
+```
+
+Webots ships its own `libcrypto-3-x64.dll` but **not** `libssl-3-x64.dll`, so
+Windows searches `PATH` for it and can load an unrelated OpenSSL build. When
+that happens Webots fails at startup with:
+
+```
+The procedure entry point OPENSSL_LH_set_thunks could not be located in
+...\scoop\apps\postgresql\current\bin\libssl-3-x64.DLL
+```
+
+The launcher drops the conflicting entries from `PATH` for that process only
+and opens `worlds/factory.wbt` directly. Nothing is uninstalled and other
+tools keep working. Extra arguments are forwarded, so
+`.\launch-webots.ps1 --mode=fast` works too.
+
 ## Installing Webots
 
 The world is pinned to **Webots R2023b** (`#VRML_SIM R2023b` header, and the
