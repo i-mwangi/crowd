@@ -249,9 +249,9 @@ while robot.step(timestep) != -1:
         target = ball.getField("translation").setSFVec3f([0.200162599578642, 2.0998855740530864, 0.3199989262253745])
         task()
         with open('state.txt', 'w') as file:
-            file.write("0")
+            file.write("1")
         robot.step(10)
         
-        break
+        # Ready for the next order — no restart needed.
     pass
 # Enter here exit cleanup code.
