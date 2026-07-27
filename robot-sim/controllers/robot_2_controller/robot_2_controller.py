@@ -2,9 +2,9 @@
 
 # Import necessary classes from the controller module.
 from controller import Supervisor, Motor, PositionSensor, Field
+import os
 import requests
 import logging
-import os
 
 # Create the Supervisor instance, which extends the Robot class and provides additional functionalities.
 robot = Supervisor()
@@ -48,8 +48,8 @@ for i in range(len(arm_motor_names)):
 
 # Function to call an external robot API
 def call_robot_api(order_id, process_id, product_id, robot_id):
-    # The DApp's robot endpoint. Set CROWD_API_URL to your public app URL
-    # (e.g. an ngrok tunnel to http://localhost:3001).
+    # The DApp's robot endpoint. Override with CROWD_API_URL when the app
+    # is not on this machine (e.g. an ngrok tunnel).
     url = os.environ.get("CROWD_API_URL", "http://localhost:3001") + "/api/robot"
     payload = {
         "orderId": order_id,
@@ -278,9 +278,9 @@ while robot.step(timestep) != -1:
         
         task(color)
         with open('state.txt', 'w') as file:
-            file.write("1")
+            file.write("0")
         robot.step(10)
-        # Ready for the next order — no restart needed.
+        break
     pass
 
 # Enter here exit cleanup code.

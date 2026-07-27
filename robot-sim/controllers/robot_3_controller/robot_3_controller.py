@@ -3,9 +3,9 @@
 # You may need to import some classes of the controller module. Ex:
 #  from controller import Robot, Motor, DistanceSensor
 from controller import Supervisor, Motor, PositionSensor
+import os
 import requests
 import logging
-import os
 # create the Robot instance.
 robot = Supervisor()
 
@@ -42,8 +42,8 @@ for i in range(len(arm_motor_names)):
     motors[i].setVelocity(0.4)##Setting motor speeds
 
 def call_robot_api(order_id, process_id, product_id, robot_id):
-    # The DApp's robot endpoint. Set CROWD_API_URL to your public app URL
-    # (e.g. an ngrok tunnel to http://localhost:3001).
+    # The DApp's robot endpoint. Override with CROWD_API_URL when the app
+    # is not on this machine (e.g. an ngrok tunnel).
     url = os.environ.get("CROWD_API_URL", "http://localhost:3001") + "/api/robot"
     payload = {
         "orderId": order_id,
@@ -249,9 +249,9 @@ while robot.step(timestep) != -1:
         target = ball.getField("translation").setSFVec3f([0.200162599578642, 2.0998855740530864, 0.3199989262253745])
         task()
         with open('state.txt', 'w') as file:
-            file.write("1")
+            file.write("0")
         robot.step(10)
         
-        # Ready for the next order — no restart needed.
+        break
     pass
 # Enter here exit cleanup code.
