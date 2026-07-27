@@ -82,7 +82,7 @@ export default function FleetPayments({ orderId, className }: Props) {
                     <h6>Paid per task, before the robot moves</h6>
                 </figure>
                 <figure className='order-note'>
-                    <Image src={'/images/icons/free.svg'} alt='total' height={8} width={8} />
+                    <Image src={'/images/icons/success.svg'} alt='total' height={8} width={8} />
                     <h6>
                         ${ledger.paidUsdc} USDC to fleet operator {ledger.fleetOperator}
                     </h6>
