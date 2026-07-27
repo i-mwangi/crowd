@@ -44,7 +44,7 @@ for i in range(len(arm_motor_names)):
 def call_robot_api(order_id, process_id, product_id, robot_id):
     # The DApp's robot endpoint. Override with CROWD_API_URL when the app
     # is not on this machine (e.g. an ngrok tunnel).
-    url = os.environ.get("CROWD_API_URL", "http://localhost:3001") + "/api/robot"
+    url = os.environ.get("CROWD_API_URL", "http://localhost:3000") + "/api/robot"
     payload = {
         "orderId": order_id,
         "processId": int(process_id),
