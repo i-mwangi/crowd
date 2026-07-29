@@ -13,6 +13,14 @@ trail with payment built in, addressing data centralization, information
 asymmetry, and supply chain security — and enabling machine-to-machine B2B
 commerce with no human in the loop.
 
+![Crowd architecture — warehouse robots, the Crowd hub, and the Hedera services
+behind them](docs/architecture.png)
+
+The left column is the physical layer, the centre is the hub, and the right is
+what lands on Hedera. The band along the bottom is the part worth reading
+twice: one order triggers **four** x402 payments, three of them from the
+warehouse to a fleet operator it does not own.
+
 ---
 
 ## Live on Hedera testnet
