@@ -23,6 +23,9 @@ Everything below is real and independently verifiable on HashScan — no mocks.
 |---|---|---|
 | Order registry contract | `0.0.9597513` | [HashScan](https://hashscan.io/testnet/contract/0.0.9597513) |
 | Audit trail topic (HCS) | `0.0.9588605` | [HashScan](https://hashscan.io/testnet/topic/0.0.9588605) |
+| Robot task bus (HCS) | `0.0.9709354` | [HashScan](https://hashscan.io/testnet/topic/0.0.9709354) |
+| Fleet operator account | `0.0.9709330` | [HashScan](https://hashscan.io/testnet/account/0.0.9709330) |
+| Settlement asset (USDC) | `0.0.5449` | [HashScan](https://hashscan.io/testnet/token/0.0.5449) |
 | Green Cube (HTS) | `0.0.9589888` | [HashScan](https://hashscan.io/testnet/token/0.0.9589888) |
 | Purple Cube (HTS) | `0.0.9589889` | [HashScan](https://hashscan.io/testnet/token/0.0.9589889) |
 | Blue Cube (HTS) | `0.0.9589890` | [HashScan](https://hashscan.io/testnet/token/0.0.9589890) |
@@ -47,28 +50,86 @@ Payment Required` status code — it lets software pay software directly, so
 autonomous agents transact without a human in the loop. Hedera's fixed,
 predictable fees are what make per-order settlement viable.
 
-Placing an order is a **paid resource**. `POST /api/orders` is gated:
+Everything settles in **USDC** (token `0.0.5449`, 6 decimals) — a stablecoin, so
+a price quoted today means the same tomorrow, and six decimals are what make
+sub-cent amounts expressible at all.
 
-1. An unpaid request returns **`402`** with a `payment-required` challenge.
-2. The buying agent signs a payment with its Hedera key — server-side only, so
-   the key never reaches the browser or an LLM's context.
-3. The request is retried; the facilitator **settles the HBAR transfer on
-   Hedera testnet**.
+### One order, four payments
+
+An order is not a single checkout. It is one customer payment plus three
+business-to-business payments, and **only the first involves a human**:
+
+| # | Payment | From → To | Signed by | Example |
+|---|---|---|---|---|
+| 1 | Goods | customer → warehouse | the customer's wallet (HashPack) | $0.01 |
+| 2 | Picking labour | warehouse → fleet operator | the warehouse, server-side | $0.0007 |
+| 3 | Packing labour | warehouse → fleet operator | the warehouse, server-side | $0.0009 |
+| 4 | Delivery labour | warehouse → fleet operator | the warehouse, server-side | $0.00116 |
+
+Payments 2–4 are the machine-to-machine part: no browser, no approval dialog,
+no invoice. Amounts are for a 2 kg package; a 35 kg package costs about five
+times more to pick.
+
+### How a payment happens
+
+`POST /api/orders` is a **paid resource**:
+
+1. An unpaid request returns **`402`** with a `payment-required` challenge
+   naming the amount, the token and the account to pay.
+2. The x402 client builds a USDC transfer and signs it. In the browser that
+   signature comes from the customer's **HashPack** wallet over WalletConnect,
+   so the customer's key never leaves their device. Server-side flows sign with
+   the agent key, which never reaches the browser.
+3. The request is retried with the signed payload; the **facilitator** adds its
+   fee-payer signature and submits it to Hedera testnet.
 4. Only then does the warehouse accept the order and dispatch a robot.
 
+The resource server holds **no Hedera key** — the facilitator is the fee payer.
 The settlement transaction id becomes the order's first audit-trail entry, so
-payment and fulfillment share one verifiable chain of custody. The resource
-server holds **no Hedera key** — the facilitator is the fee payer.
+payment and fulfillment share one verifiable chain of custody.
+
+### Robotics-as-a-Service: why there are three more payments
+
+The warehouse does not own its robots. It **rents** them from a fleet operator
+that runs its own x402 server, with its own price list, and it pays **per
+task**.
+
+Before any robot moves, the warehouse itself receives a 402 and pays it. The
+tariff is a call-out fee plus a rate per kilogram, so heavier packages cost
+more to handle:
+
+| Phase | Base | Per kg | 2 kg | 35 kg |
+|---|---|---|---|---|
+| Picking | $0.0005 | $0.0001 | $0.0007 | $0.0040 |
+| Packing | $0.0008 | $0.00005 | $0.0009 | $0.00255 |
+| Delivery | $0.0010 | $0.00008 | $0.00116 | $0.0038 |
+
+**Payment buys an unlock, not a promise.** The robot only works once the
+settlement clears, and each unlock covers exactly one task.
+
+**And the work is proven, not asserted.** Each of the 15 robots has its own
+Hedera account and signs its own `TaskCompleted` message. The mirror node
+records `payer_account_id` on every message, so anyone can check that the robot
+which was assigned is the robot that signed. The warehouse holds none of those
+keys, so it cannot fabricate a completion — we tested this by submitting a
+forged completion from the operator account, and it earned nothing.
 
 ## Architecture
 
-Three layers, each independently verifiable.
+Four components, each independently verifiable — and deliberately separate
+parties, not one program wearing hats.
 
 ```
-frontend/     Next.js DApp — the hub and orchestration brain
+frontend/     Next.js DApp — the warehouse hub and orchestration brain
 contracts/    WarehouseRegistry.sol — the enforcement layer
+robot-agent/  the fleet operator: its own x402 server, tariff, and 15 robots
 robot-sim/    Webots fleet + Flask connectivity layer — the physical layer
 ```
+
+`robot-agent/` is the counterparty, not a module of the warehouse. It sets its
+own prices, holds the robot keys, and is paid by the warehouse over x402 — which
+is what makes payments 2–4 genuine machine-to-machine commerce rather than an
+internal function call.
 
 ### The trust model: enforced vs. recorded
 
@@ -135,8 +196,38 @@ Requires Node 20+, pnpm, and a funded ECDSA Hedera testnet account
 cd frontend
 pnpm install
 cp .env.example .env                # then fill in the values below
-pnpm dev                            # http://localhost:3000
 ```
+
+### Start the services
+
+The warehouse and the fleet operator are separate parties, so they run as
+separate processes. **Start the fleet operator first** — if it is down when an
+order runs, the three labour payments are skipped silently and the Robot Labour
+panel stays empty.
+
+```bash
+# 1. fleet operator — sells robot labour over x402        :4022
+cd robot-agent && node server.mjs
+
+# 2. the robots — listen on the on-chain task bus, sign their own completions
+cd robot-agent && node index.mjs
+
+# 3. the DApp — the warehouse hub                          :3000
+cd frontend && pnpm dev
+```
+
+Check all of it is up before ordering:
+
+```bash
+curl -s -o /dev/null -w "dapp  %{http_code}\n" http://localhost:3000/api/products
+curl -s -o /dev/null -w "fleet %{http_code}\n" http://localhost:4022/tariff
+```
+
+Both should be `200`. The Webots simulation is optional — see
+[`robot-sim/README.md`](robot-sim/README.md); without it the DApp drives the
+pipeline on a timer and the on-chain result is identical.
+
+### Configuration
 
 Minimum configuration in `frontend/.env`:
 
@@ -145,8 +236,12 @@ Minimum configuration in `frontend/.env`:
 | `PAY_TO_ACCOUNT` | Warehouse account that receives order payments |
 | `HEDERA_AGENT_ID` / `HEDERA_AGENT_KEY` | The buying agent that pays via x402 |
 | `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY` | Signs HCS messages and contract calls |
+| `NEXT_PUBLIC_USDC_TOKEN` | Settlement asset (testnet USDC, `0.0.5449`) |
 | `NEXT_PUBLIC_REGISTRY_CONTRACT` | The registry contract id |
 | `NEXT_PUBLIC_HCS_TOPIC` | The audit trail topic (auto-created if blank) |
+| `FLEET_OPERATOR_ACCOUNT` | Account the robot labour payments are made to |
+| `NEXT_PUBLIC_TASK_TOPIC` | The on-chain task bus robots subscribe to |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | Enables HashPack; blank falls back to the server-side agent |
 
 **Runs credential-free.** With no `.env`, the app falls back to simulated
 settlement and a local audit log, so the full pipeline is demonstrable without
@@ -155,12 +250,22 @@ settlement.
 
 ### Deploying your own on-chain artifacts
 
+All scripts read credentials from `frontend/.env`; none hardcodes a secret.
+
 ```bash
-node scripts/mint-tokens.mjs      # 3 product tokens + 15 robot twin NFTs
-node scripts/deploy-contract.mjs  # compile + deploy WarehouseRegistry
+node scripts/mint-tokens.mjs       # 3 product tokens + 15 robot twin NFTs
+node scripts/deploy-contract.mjs   # compile + deploy WarehouseRegistry
+node scripts/provision-fleet.mjs   # fleet operator, 15 robot accounts, task topic
+node scripts/associate-usdc.mjs    # opt the accounts in to the USDC token
 ```
 
-Both print the ids to paste into `.env`. Neither hardcodes a credential.
+Each prints the ids to paste into `.env`. Two helpers for running the demo:
+
+```bash
+node scripts/create-customer.mjs   # a funded wallet to import into HashPack
+node scripts/recycle-usdc.mjs      # sweep circulated USDC back to the customer
+node scripts/verify-enforcement.mjs <orderId>   # prove the contract reverts
+```
 
 ## The physical layer
 
