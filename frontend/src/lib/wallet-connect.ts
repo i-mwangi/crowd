@@ -68,10 +68,24 @@ export async function connectWallet(): Promise<string> {
     await connector.init({ logger: 'error' });
     const session = await connector.openModal();
 
-    // account strings look like "hedera:testnet:0.0.1234" — take the id.
-    const account = session.namespaces?.hedera?.accounts?.[0];
-    const accountId = account?.split(':').pop();
-    if (!accountId) throw new Error('wallet returned no account');
+    // account strings look like "hedera:testnet:0.0.1234" — take the ids.
+    const accountIds = (session.namespaces?.hedera?.accounts ?? [])
+        .map((a) => a.split(':').pop())
+        .filter((id): id is string => Boolean(id));
+
+    if (!accountIds.length) throw new Error('wallet returned no account');
+
+    // A wallet can approve several accounts at once. Paying the merchant from
+    // the merchant's own account nets to zero and is rejected during
+    // verification, so prefer any account that isn't the one being paid.
+    const merchant = process.env.NEXT_PUBLIC_OWNER_ACCOUNT;
+    const accountId = accountIds.find((id) => id !== merchant) ?? accountIds[0];
+
+    if (accountId === merchant) {
+        throw new Error(
+            `Only the merchant account ${merchant} was approved — connect a different account in your wallet to pay for orders.`
+        );
+    }
 
     const { AccountId } = await import('@hiero-ledger/sdk');
     const signer = connector.getSigner(AccountId.fromString(accountId));
