@@ -30,6 +30,16 @@ Everything below is real and independently verifiable on HashScan — no mocks.
 | Packing robot twins (NFT ×5) | `0.0.9589893` | [HashScan](https://hashscan.io/testnet/token/0.0.9589893) |
 | Delivery robot twins (NFT ×5) | `0.0.9589894` | [HashScan](https://hashscan.io/testnet/token/0.0.9589894) |
 
+## Verify it yourself
+
+With the app running at `localhost:3000`:
+
+| Page | What it proves |
+|---|---|
+| `/home/store` | Three products, each an HTS token — click through to HashScan |
+| `/home/twins` | 15 robot digital twins as NFTs, with live busy/idle state |
+| `/order?id=…` | Per-order: the 4 x402 payments, 11 HCS messages, and PRNG assignments, every one linking to HashScan |
+
 ## The x402 payment layer
 
 [x402](https://x402.org/) is an open payment standard built on the HTTP `402
