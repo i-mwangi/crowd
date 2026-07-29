@@ -44,3 +44,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# demo voiceover script — local only, never commit
+docs/demo-voiceover.md
+
+# Webots editor scratch files (regenerate on every open)
+robot-sim/worlds/.*.wbproj
+robot-sim/worlds/.*.jpg
