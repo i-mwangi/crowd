@@ -51,6 +51,18 @@ With the app running at `localhost:3000`:
 | `/home/twins` | 15 robot digital twins as NFTs, with live busy/idle state |
 | `/order?id=…` | Per-order: the 4 x402 payments, 11 HCS messages, and PRNG assignments, every one linking to HashScan |
 
+And with the fleet server running, one command shows the protocol with no
+wallet, no SDK and no browser — ask for robot labour without paying for it:
+
+```bash
+curl -i -X POST http://localhost:4022/tasks/picking -H 'content-type: application/json' -d '{"orderId":"probe","robotId":1,"weightKg":2}'
+```
+
+That returns a genuine `HTTP/1.1 402 Payment Required` with a challenge naming
+the amount, the asset and the recipient. Raise `weightKg` and the quoted price
+rises with it — the tariff is a call-out fee plus a rate per kilogram, because
+lifting 35 kg is not the same job as lifting 2 kg.
+
 ## The x402 payment layer
 
 [x402](https://x402.org/) is an open payment standard built on the HTTP `402
@@ -274,6 +286,43 @@ node scripts/create-customer.mjs   # a funded wallet to import into HashPack
 node scripts/recycle-usdc.mjs      # sweep circulated USDC back to the customer
 node scripts/verify-enforcement.mjs <orderId>   # prove the contract reverts
 ```
+
+## Deployment
+
+Crowd is four components, and they don't all belong in the same place.
+
+| Component | Where it runs | Why |
+|---|---|---|
+| Next.js app (`frontend/`) | Serverless — Vercel, root directory `frontend` | Stateless request/response |
+| Fleet operator (`robot-agent/`) | A host that keeps a process alive | Holds an open HCS subscription to the task bus |
+| Connectivity layer (`robot-sim/controllers/webots.py`) | Beside the robots | Writes to the filesystem the controllers poll |
+| Webots | An operator's workstation | Needs a GPU and a display |
+
+**On a serverless deployment, the Robot Labour panel is empty. That is expected,
+not a fault.** Robot labour is bought from a *separate party* — the fleet
+operator runs its own x402 resource server and subscribes to the task bus to
+learn which jobs have been paid for. A subscription is a long-lived connection,
+and serverless functions are torn down between requests, so `robot-agent/`
+cannot live there. Without it, the customer→warehouse payment settles and the
+three warehouse→fleet payments have nobody to quote them.
+
+That separation is the architecture, not a limitation of it: a warehouse that
+could run the fleet operator itself could also forge the robots' work, which is
+the thing the design exists to prevent.
+
+So a deployed instance demonstrates the storefront, the wallet connection and
+the first x402 payment. The full four-payment cycle needs the fleet server and
+Webots running locally — see [Start the services](#running-it) — and is shown
+end to end in the demo video. Either way the on-chain result is the same, and
+every transaction from a local run is public: the entities in
+[Live on Hedera testnet](#live-on-hedera-testnet) are real, and the four
+payments and eleven consensus messages behind them can be inspected on HashScan
+without running anything at all.
+
+If you deploy the frontend, remember to add the deployed origin to your
+WalletConnect project's allowed domains — the relay rejects the handshake from
+any origin that isn't listed, which surfaces as a connection failure in the
+browser console.
 
 ## The physical layer
 
