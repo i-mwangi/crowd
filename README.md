@@ -5,15 +5,15 @@
 Crowd is a middleware-as-a-service hub that bridges the gap between industrial
 warehouse robotics and Hedera. It gives disparate robotics systems a unified
 interface, turning every robotic action into a transparent, traceable and
-tamper-resistant record — while an **x402** payment layer settles the order
+tamper-resistant record, while an **x402** payment layer settles the order
 *before* fulfillment begins.
 
 The result: physical warehouse operations become a verifiable digital audit
 trail with payment built in, addressing data centralization, information
-asymmetry, and supply chain security — and enabling machine-to-machine B2B
+asymmetry, and supply chain security, while enabling machine-to-machine B2B
 commerce with no human in the loop.
 
-![Crowd architecture — warehouse robots, the Crowd hub, and the Hedera services
+![Crowd architecture: warehouse robots, the Crowd hub, and the Hedera services
 behind them](docs/architecture.png)
 
 The left column is the physical layer, the centre is the hub, and the right is
@@ -25,7 +25,7 @@ warehouse to a fleet operator it does not own.
 
 ## Live on Hedera testnet
 
-Everything below is real and independently verifiable on HashScan — no mocks.
+Everything below is real and independently verifiable on HashScan. No mocks.
 
 | Component | Entity | |
 |---|---|---|
@@ -47,7 +47,7 @@ With the app running at `localhost:3000`:
 
 | Page | What it proves |
 |---|---|
-| `/home/store` | Three products, each an HTS token — click through to HashScan |
+| `/home/store` | Three products, each an HTS token; click through to HashScan |
 | `/home/twins` | 15 robot digital twins as NFTs, with live busy/idle state |
 | `/order?id=…` | Per-order: the 4 x402 payments, 11 HCS messages, and PRNG assignments, every one linking to HashScan |
 
@@ -88,7 +88,7 @@ curl -sD- -o/dev/null -X POST "https://crowd-sandy.vercel.app/api/orders?product
 ```
 
 `10000` is $0.01 in USDC's 6 decimals. `0.0.5449` is USDC, `0.0.5792828` is the
-warehouse, and `feePayer` is the facilitator — it covers the network fee and
+warehouse, and `feePayer` is the facilitator, which covers the network fee and
 holds no key of ours. Products `0`, `1` and `2` quote $0.01, $0.015 and $0.02.
 
 A client that signs that challenge and retries the same request gets a `201` and
@@ -103,7 +103,7 @@ curl -s http://localhost:4022/tariff
 curl -i -X POST "http://localhost:4022/tasks/picking?order=probe&robot=1&product=0&weight=2"
 ```
 
-Raise `weight` and the quote rises with it — a call-out fee plus a rate per
+Raise `weight` and the quote rises with it: a call-out fee plus a rate per
 kilogram, because lifting 35 kg is not the same job as lifting 2 kg:
 
 | Package | Quoted `amount` | |
@@ -112,17 +112,17 @@ kilogram, because lifting 35 kg is not the same job as lifting 2 kg:
 | 12 kg | `1700` | $0.0017 |
 | 35 kg | `4000` | $0.0040 |
 
-Note the `payTo` in that challenge is `0.0.9709330`, the fleet operator — not
+Note the `payTo` in that challenge is `0.0.9709330`, the fleet operator, not
 the warehouse. The warehouse is the one paying here.
 
 ## The x402 payment layer
 
 [x402](https://x402.org/) is an open payment standard built on the HTTP `402
-Payment Required` status code — it lets software pay software directly, so
+Payment Required` status code. It lets software pay software directly, so
 autonomous agents transact without a human in the loop. Hedera's fixed,
 predictable fees are what make per-order settlement viable.
 
-Everything settles in **USDC** (token `0.0.5449`, 6 decimals) — a stablecoin, so
+Everything settles in **USDC** (token `0.0.5449`, 6 decimals), a stablecoin, so
 a price quoted today means the same tomorrow, and six decimals are what make
 sub-cent amounts expressible at all.
 
@@ -156,7 +156,7 @@ times more to pick.
    fee-payer signature and submits it to Hedera testnet.
 4. Only then does the warehouse accept the order and dispatch a robot.
 
-The resource server holds **no Hedera key** — the facilitator is the fee payer.
+The resource server holds **no Hedera key**. The facilitator is the fee payer.
 The settlement transaction id becomes the order's first audit-trail entry, so
 payment and fulfillment share one verifiable chain of custody.
 
@@ -183,23 +183,23 @@ settlement clears, and each unlock covers exactly one task.
 Hedera account and signs its own `TaskCompleted` message. The mirror node
 records `payer_account_id` on every message, so anyone can check that the robot
 which was assigned is the robot that signed. The warehouse holds none of those
-keys, so it cannot fabricate a completion — we tested this by submitting a
+keys, so it cannot fabricate a completion. We tested this by submitting a
 forged completion from the operator account, and it earned nothing.
 
 ## Architecture
 
-Four components, each independently verifiable — and deliberately separate
+Four components, each independently verifiable, and deliberately separate
 parties, not one program wearing hats.
 
 ```
-frontend/     Next.js DApp — the warehouse hub and orchestration brain
-contracts/    WarehouseRegistry.sol — the enforcement layer
+frontend/     Next.js DApp: the warehouse hub and orchestration brain
+contracts/    WarehouseRegistry.sol: the enforcement layer
 robot-agent/  the fleet operator: its own x402 server, tariff, and 15 robots
-robot-sim/    Webots fleet + Flask connectivity layer — the physical layer
+robot-sim/    Webots fleet + Flask connectivity layer: the physical layer
 ```
 
 `robot-agent/` is the counterparty, not a module of the warehouse. It sets its
-own prices, holds the robot keys, and is paid by the warehouse over x402 — which
+own prices, holds the robot keys, and is paid by the warehouse over x402, which
 is what makes payments 2–4 genuine machine-to-machine commerce rather than an
 internal function call.
 
@@ -209,7 +209,7 @@ This distinction is the core of the design.
 
 - **The contract is the referee.** `WarehouseRegistry` *enforces* the
   pipeline: an order cannot be packed before it is picked, or shipped before
-  it is delivered — invalid transitions **revert on-chain**. Robot assignment
+  it is delivered. Invalid transitions **revert on-chain**. Robot assignment
   is drawn from Hedera's **PRNG system contract** (`0x169`), so the operator
   cannot choose which robot handles an order.
 - **HCS is the court reporter.** Every action is written to a consensus topic
@@ -224,7 +224,7 @@ cd frontend
 node scripts/verify-enforcement.mjs <orderId>
 #   phase         : Picking (2)
 #   attempting illegal jump Picking -> Delivery (should revert)...
-#   ✓ enforced — contract reverted: CONTRACT_REVERT_EXECUTED
+#   ✓ enforced, contract reverted: CONTRACT_REVERT_EXECUTED
 ```
 
 Every `SelectedRobot` message on the topic names its source, so anyone can
@@ -273,18 +273,18 @@ cp .env.example .env                # then fill in the values below
 ### Start the services
 
 The warehouse and the fleet operator are separate parties, so they run as
-separate processes. **Start the fleet operator first** — if it is down when an
+separate processes. **Start the fleet operator first**. If it is down when an
 order runs, the three labour payments are skipped silently and the Robot Labour
 panel stays empty.
 
 ```bash
-# 1. fleet operator — sells robot labour over x402        :4022
+# 1. fleet operator: sells robot labour over x402        :4022
 cd robot-agent && node server.mjs
 
-# 2. the robots — listen on the on-chain task bus, sign their own completions
+# 2. the robots: listen on the on-chain task bus, sign their own completions
 cd robot-agent && node index.mjs
 
-# 3. the DApp — the warehouse hub                          :3000
+# 3. the DApp: the warehouse hub                          :3000
 cd frontend && pnpm dev
 ```
 
@@ -295,7 +295,7 @@ curl -s -o /dev/null -w "dapp  %{http_code}\n" http://localhost:3000/api/product
 curl -s -o /dev/null -w "fleet %{http_code}\n" http://localhost:4022/tariff
 ```
 
-Both should be `200`. The Webots simulation is optional — see
+Both should be `200`. The Webots simulation is optional; see
 [`robot-sim/README.md`](robot-sim/README.md); without it the DApp drives the
 pipeline on a timer and the on-chain result is identical.
 
@@ -345,13 +345,13 @@ Crowd is four components, and they don't all belong in the same place.
 
 | Component | Where it runs | Why |
 |---|---|---|
-| Next.js app (`frontend/`) | Serverless — Vercel, root directory `frontend` | Stateless request/response |
+| Next.js app (`frontend/`) | Serverless (Vercel), root directory `frontend` | Stateless request/response |
 | Fleet operator (`robot-agent/`) | A host that keeps a process alive | Holds an open HCS subscription to the task bus |
 | Connectivity layer (`robot-sim/controllers/webots.py`) | Beside the robots | Writes to the filesystem the controllers poll |
 | Webots | An operator's workstation | Needs a GPU and a display |
 
 **On a serverless deployment, the Robot Labour panel is empty. That is expected,
-not a fault.** Robot labour is bought from a *separate party* — the fleet
+not a fault.** Robot labour is bought from a *separate party*: the fleet
 operator runs its own x402 resource server and subscribes to the task bus to
 learn which jobs have been paid for. A subscription is a long-lived connection,
 and serverless functions are torn down between requests, so `robot-agent/`
@@ -364,7 +364,7 @@ the thing the design exists to prevent.
 
 So a deployed instance demonstrates the storefront, the wallet connection and
 the first x402 payment. The full four-payment cycle needs the fleet server and
-Webots running locally — see [Start the services](#running-it) — and is shown
+Webots running locally (see [Start the services](#running-it)), and is shown
 end to end in the demo video. Either way the on-chain result is the same, and
 every transaction from a local run is public: the entities in
 [Live on Hedera testnet](#live-on-hedera-testnet) are real, and the four
@@ -372,19 +372,19 @@ payments and eleven consensus messages behind them can be inspected on HashScan
 without running anything at all.
 
 If you deploy the frontend, remember to add the deployed origin to your
-WalletConnect project's allowed domains — the relay rejects the handshake from
+WalletConnect project's allowed domains. The relay rejects the handshake from
 any origin that isn't listed, which surfaces as a connection failure in the
 browser console.
 
 ## The physical layer
 
-`robot-sim/` drives a Webots robot fleet — an AGV with a myCobot arm. It is
+`robot-sim/` drives a Webots robot fleet: an AGV with a myCobot arm. It is
 deliberately **chain-agnostic**: it only speaks
 `{orderId, processId, productId, robotId}` JSON, so a warehouse can adopt the
 hub without touching its existing robot code.
 
 The loop closes: the DApp commands a robot through a Flask connectivity layer
-(the IoT tier), and **when the robot physically finishes it calls back** — that
+(the IoT tier), and **when the robot physically finishes it calls back**, and that
 callback is what advances the order on-chain. In online mode a timer stands in
 for the robot; the on-chain result is identical. See
 [`robot-sim/README.md`](robot-sim/README.md).
@@ -393,7 +393,7 @@ for the robot; the on-chain result is identical. See
 
 | Problem | How Crowd addresses it |
 |---|---|
-| **Data is not transparent** — fleets run in isolated silos | Every action lands on one public consensus topic |
-| **Track-and-trace is hard** — no clear audit trail | Eleven verifiable transactions per order, plus an IPFS report |
-| **Security** — mutable Web2 records invite tampering | Contract-enforced ordering; PRNG assignment nobody can rig |
-| **Payment friction** — invoices, chargebacks, minimums | x402 settles per order in seconds, agent-to-agent |
+| **Data is not transparent**: fleets run in isolated silos | Every action lands on one public consensus topic |
+| **Track-and-trace is hard**: no clear audit trail | Eleven verifiable transactions per order, plus an IPFS report |
+| **Security**: mutable Web2 records invite tampering | Contract-enforced ordering; PRNG assignment nobody can rig |
+| **Payment friction**: invoices, chargebacks, minimums | x402 settles per order in seconds, agent-to-agent |
