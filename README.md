@@ -51,17 +51,59 @@ With the app running at `localhost:3000`:
 | `/home/twins` | 15 robot digital twins as NFTs, with live busy/idle state |
 | `/order?id=…` | Per-order: the 4 x402 payments, 11 HCS messages, and PRNG assignments, every one linking to HashScan |
 
-And with the fleet server running, one command shows the protocol with no
-wallet, no SDK and no browser — ask for robot labour without paying for it:
+### See the 402 without installing anything
+
+Order placement is a paid resource. Ask for it without paying and the live
+deployment answers with a real HTTP 402:
+
+```bash
+curl -i -X POST "https://crowd-sandy.vercel.app/api/orders?product=0&order=probe"
+```
+
+```
+HTTP/1.1 402 Payment Required
+Payment-Required: eyJ4NDAyVmVyc2lvbiI6MiwiZXJyb3IiOiJQYXltZW50IHJlcXVpcmVk...
+```
+
+That header is the payment challenge, base64-encoded. Decode it to see exactly
+what is owed and to whom:
+
+```bash
+curl -sD- -o/dev/null -X POST "https://crowd-sandy.vercel.app/api/orders?product=0&order=probe" \
+  | grep -i '^payment-required:' | cut -d' ' -f2 | tr -d '\r' | base64 -d
+```
+
+```json
+{
+  "x402Version": 2,
+  "accepts": [{
+    "scheme": "exact",
+    "network": "hedera:testnet",
+    "amount": "10000",
+    "asset": "0.0.5449",
+    "payTo": "0.0.5792828",
+    "extra": { "feePayer": "0.0.7162784" }
+  }]
+}
+```
+
+`10000` is $0.01 in USDC's 6 decimals. `0.0.5449` is USDC, `0.0.5792828` is the
+warehouse, and `feePayer` is the facilitator — it covers the network fee and
+holds no key of ours. Products `0`, `1` and `2` quote $0.01, $0.015 and $0.02.
+
+A client that signs that challenge and retries the same request gets a `201` and
+an order on-chain. That is the entire protocol: no side channel, no payment API,
+just a status code and two headers.
+
+Robot labour works identically, priced per kilogram, against the fleet operator's
+own server once it is running locally:
 
 ```bash
 curl -i -X POST http://localhost:4022/tasks/picking -H 'content-type: application/json' -d '{"orderId":"probe","robotId":1,"weightKg":2}'
 ```
 
-That returns a genuine `HTTP/1.1 402 Payment Required` with a challenge naming
-the amount, the asset and the recipient. Raise `weightKg` and the quoted price
-rises with it — the tariff is a call-out fee plus a rate per kilogram, because
-lifting 35 kg is not the same job as lifting 2 kg.
+Raise `weightKg` and the quote rises with it — a call-out fee plus a rate per
+kilogram, because lifting 35 kg is not the same job as lifting 2 kg.
 
 ## The x402 payment layer
 
