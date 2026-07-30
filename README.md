@@ -99,11 +99,21 @@ Robot labour works identically, priced per kilogram, against the fleet operator'
 own server once it is running locally:
 
 ```bash
-curl -i -X POST http://localhost:4022/tasks/picking -H 'content-type: application/json' -d '{"orderId":"probe","robotId":1,"weightKg":2}'
+curl -s http://localhost:4022/tariff
+curl -i -X POST "http://localhost:4022/tasks/picking?order=probe&robot=1&product=0&weight=2"
 ```
 
-Raise `weightKg` and the quote rises with it — a call-out fee plus a rate per
-kilogram, because lifting 35 kg is not the same job as lifting 2 kg.
+Raise `weight` and the quote rises with it — a call-out fee plus a rate per
+kilogram, because lifting 35 kg is not the same job as lifting 2 kg:
+
+| Package | Quoted `amount` | |
+|---|---|---|
+| 2 kg | `700` | $0.0007 |
+| 12 kg | `1700` | $0.0017 |
+| 35 kg | `4000` | $0.0040 |
+
+Note the `payTo` in that challenge is `0.0.9709330`, the fleet operator — not
+the warehouse. The warehouse is the one paying here.
 
 ## The x402 payment layer
 
