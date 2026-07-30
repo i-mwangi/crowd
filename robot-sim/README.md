@@ -1,4 +1,4 @@
-# robot-sim — the physical layer
+# robot-sim: the physical layer
 
 Drives a simulated warehouse robot fleet from the Crowd hub. This layer is
 chain-agnostic: it only ever speaks `{orderId, processId, productId, robotId}`
@@ -7,7 +7,7 @@ JSON, so nothing here knows about Hedera.
 ## Layout
 
 Webots resolves paths relative to the world file and requires each controller
-to live in a directory matching its filename — this structure is load-bearing,
+to live in a directory matching its filename. This structure is load-bearing,
 don't flatten it.
 
 ```
@@ -52,7 +52,7 @@ python -m flask --app webots run --port 5000
 # 4. Open worlds/factory.wbt in Webots and press play.
 ```
 
-Verify before ordering — `curl http://localhost:5000/` reports readiness:
+Verify before ordering. `curl http://localhost:5000/` reports readiness:
 
 ```json
 { "robots": { "robot_1": "ready", "robot_2": "ready", "robot_3": "ready" } }
@@ -68,7 +68,7 @@ until a robot reports `ready`.
 2. Flask checks the robot is `ready`, writes the command to disk, sets `state=2`
 3. The Webots controller polls `state.txt`, sees `2`, and runs the task
 4. When the robot physically finishes it calls `CROWD_API_URL/api/robot` with
-   its `processId` — **that callback is what advances the order on-chain**
+   its `processId`, and **that callback is what advances the order on-chain**
 
 In online mode the DApp fakes step 2–4 with a timer. In local mode real robot
 work replaces the timer; the on-chain result is identical.
@@ -101,12 +101,12 @@ tools keep working. Extra arguments are forwarded, so
 
 The world is pinned to **Webots R2023b** (`#VRML_SIM R2023b` header, and the
 `EXTERNPROTO` entries point at that release). Download it from
-[cyberbotics.com](https://cyberbotics.com/) — a newer release will usually
+[cyberbotics.com](https://cyberbotics.com/). A newer release will usually
 open the world but may warn about proto versions.
 
 Asset references have been validated:
 
-- 15 local meshes under `stls/` — all resolve from `worlds/factory.wbt`
+- 15 local meshes under `stls/`, all resolving from `worlds/factory.wbt`
 - the Robotiq 2F-140 gripper meshes and background protos are fetched from
   GitHub on first open, so the **first launch needs internet**
 
@@ -115,5 +115,5 @@ Asset references have been validated:
 - **Drift over repeated runs.** Movement is dead-reckoned from wheel encoders
   with hardcoded distances, so position error accumulates across many orders.
   Restart the simulation if the robots stop lining up with the shelves.
-- **`stls/arm/link 5 part 3.STL` and `wheel.STL` were removed** — the world
+- **`stls/arm/link 5 part 3.STL` and `wheel.STL` were removed**. The world
   file references neither.
